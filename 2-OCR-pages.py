@@ -13,6 +13,8 @@ ks = IMKS(kds)
 modelname = 'tesseract'
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
+skips=['GuJCq5RSRH15jXpSGZdPYZ4uvMXpvNJG6Rsd13ZXpaPDwr']
+
 with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
     for line in f:
         line = line.strip()  
@@ -20,6 +22,7 @@ with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
         print('\n\n NEW PDF: ', line,'\n\n')
         
         for _, prop, page_cid in ks.inquire(subject=ds.encode(cid)):
+            if page_cid in skips: continue
             if prop != 'CONTAINS': continue
             kid, _ = ks.believe(ds.encode(cid), prop, page_cid)
             completed_models = set()
@@ -35,9 +38,13 @@ with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
                 print('already complete for',modelname,'with',page_cid)
                 continue
             
-            images = convert_from_bytes(ds.recall(page_cid), dpi=300)
-            if len(images) != 1:
-                print('ERROR: PDF should have only one page for',page_cid,'from',ds.encode(cid),'...skipping')
+            try:
+                images = convert_from_bytes(ds.recall(page_cid), dpi=300)
+                if len(images) != 1:
+                    print('ERROR: PDF should have only one page for',page_cid,'from',ds.encode(cid),'...skipping')
+                    continue
+            except:
+                print('ERROR: could not read page ' + page_cid)
                 continue
             ocr_text = pytesseract.image_to_string(images[0])
             ocid, _ = ds.know(ocr_text)
