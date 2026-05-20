@@ -24,7 +24,7 @@ embedding_model = SentenceTransformer(modelname)
 def embed_text(text: str) -> np.ndarray:
     return np.asarray(
             embedding_model.encode(
-                list(text),
+                [text],
                 normalize_embeddings=True
             )
         )[0]
