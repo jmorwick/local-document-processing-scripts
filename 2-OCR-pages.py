@@ -6,14 +6,30 @@ from cidnilib import FileBasedDataService as FBDS
 from cidnilib import PickleFileBasedDataService as PFBDS
 from cidnilib import InMemoryKnowledgeService as IMKS
 import PIL
+#from paddleocr import PaddleOCR
+import numpy as np
 
 ds = FBDS('./cidnidb')
 kds = PFBDS('./cidnidb', levels=0)
 ks = IMKS(kds)
 modelname = 'tesseract'
+#modelname = 'paddleocr'
 PIL.Image.MAX_IMAGE_PIXELS = 500000000
 
-skips=['GuJCq5RSRH15jXpSGZdPYZ4uvMXpvNJG6Rsd13ZXpaPDwr']
+if modelname=='paddleocr':
+    pocr = PaddleOCR(use_angle_cls=True, lang="en")
+
+def paddleocr_process(pil_image):
+    image_np = np.array(pil_image)
+    result = pocr.ocr(image_np)
+    lines = []
+    for page in result:
+        for line in page:
+            text = line[1][0]
+            lines.append(text)
+
+    return "\n".join(lines)
+
 
 with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
     for line in f:
@@ -22,7 +38,6 @@ with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
         print('\n\n NEW PDF: ', line,'\n\n')
         
         for _, prop, page_cid in ks.inquire(subject=ds.encode(cid)):
-            if page_cid in skips: continue
             if prop != 'CONTAINS': continue
             kid, _ = ks.believe(ds.encode(cid), prop, page_cid)
             completed_models = set()
@@ -46,7 +61,8 @@ with open("original-pdf-ids.txt", "r", encoding="utf-8") as f:
             except:
                 print('ERROR: could not read page ' + page_cid)
                 continue
-            ocr_text = pytesseract.image_to_string(images[0])
+            ocr_text = pytesseract.image_to_string(images[0]) if modelname == 'tesseract' else paddleocr_process(images[0])
+            print(ocr_text)
             ocid, _ = ds.know(ocr_text)
             okid, _ = ks.believe(page_cid, 'OCR', ds.encode(ocid))
             ks.believe(ds.encode(okid), 'MODEL', modelname)
