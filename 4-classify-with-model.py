@@ -18,6 +18,7 @@ prompt_template_cid = sys.argv[2]
 ocr_model_name = sys.argv[3]
 llm_model_name = sys.argv[4]
 
+processor_name = llm_model_name+','+prompt_template_cid
 
 def get_property(cid, property):
     if type(cid) == bytes: cid = ds.encode(cid) 
@@ -29,10 +30,22 @@ kds = PFBDS('./cidnidb', levels=0)
 ks = IMKS(kds)
 
 
+
+document_cids = []
+for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
+        line = line.strip() 
+        if not line: continue
+        cid = ds.decode(line)   
+        document_cids.append(cid)
+
+
+
 # query class list
-class_list = set()
-for _, _, class_label in ks.inquire(property='assigned-class'):
-    class_list.add(class_label) 
+
+for doc_cid in document_cids:
+    class_list = set()
+    for _, _, class_label in ks.inquire(ds.encode(doc_cid), 'assigned-class'):
+        class_list.add(class_label) 
 
 print('using template',prompt_template_cid,'with model',llm_model_name,'to classify documents with one of',class_list)
 
@@ -51,15 +64,9 @@ def classify_with_llm(ocr_text):
         ]
     ).choices[0].message.content
 
-
-document_cids = []
-for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
-        line = line.strip() 
-        if not line: continue
-        cid = ds.decode(line)   
-        document_cids.append(cid)
     
-processor_name = llm_model_name+','+prompt_template_cid
+
+
 
 predictions = 0
 print('Total documents to process:',len(document_cids))
@@ -75,6 +82,7 @@ for doc_cid in document_cids:
                 print(f"** already computed: {processor_name}->{class_label}")
         if processor_name in completed_models:
             print('already complete for',processor_name)
+            #kds.forget(okid)
             continue
         
         # gather up all pages to be used for classification
@@ -110,4 +118,4 @@ for doc_cid in document_cids:
         ks.believe(ds.encode(okid), 'CONFIDENCE', confidence)
         print('CLASSIFICATION: ',ds.encode(doc_cid), '-->',class_label, confidence)
         predictions += 1
-        kds.flush()   # move up to recover from interruptions more easily
+kds.flush()   # move up to recover from interruptions more easily

@@ -12,6 +12,7 @@ import sys
 
 if len(sys.argv) < 3:
    print("usage: python script pdf_list_cid ocr_model")
+   sys.exit(1)
 
 pdf_list_cid = sys.argv[1]
 ocr_model_name = sys.argv[2]
@@ -22,6 +23,8 @@ kds = PFBDS('./cidnidb', levels=0)
 ks = IMKS(kds)
 
 PIL.Image.MAX_IMAGE_PIXELS = 500000000 
+
+page_one_only = True
 
 if ocr_model_name=='paddleocr':
     pocr = PaddleOCR(use_angle_cls=True, lang="en")
@@ -56,7 +59,9 @@ for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
             completed_models = set()
             _, _, pagenumber = list(ks.inquire(subject=ds.encode(kid), property='PAGE'))[0]
             print("STARTING OCR FOR PAGE: ", pagenumber,'    Page CID:',page_cid)
-            
+            if page_one_only and pagenumber != '1': 
+                print('skipping....')
+                continue
             for _, _, ocr_cid in ks.inquire(subject=page_cid, property='OCR'):
                 okid, _ = ks.believe(page_cid, 'OCR', ocr_cid)
                 for _, _, cmodel in ks.inquire(subject=ds.encode(okid), property='MODEL'):
@@ -76,7 +81,7 @@ for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
                 continue
             if ocr_model_name == 'tesseract':
                 ocr_text = pytesseract.image_to_string(images[0])
-            if ocr_model_name == 'paddleocr':
+            elif ocr_model_name == 'paddleocr':
                 paddleocr_process(images[0])
             else:
                 print('ERROR: uncrecognized model name',ocr_model_name)
@@ -87,4 +92,4 @@ for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
             ks.believe(ds.encode(okid), 'MODEL', ocr_model_name)
             print('OCRTEXT: ',page_cid,ds.encode(ocid), '-->',ds.encode(okid))
             
-kds.flush()   # move up to recover from interruptions more easily
+        kds.flush()   # move up to recover from interruptions more easily
