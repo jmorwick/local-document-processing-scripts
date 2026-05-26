@@ -65,16 +65,6 @@ for doc_cid in document_cids:
         print(f"Progress: {(predictions/len(document_cids)):.2%}\n\n")
         predictions += 1
        
-        completed_models = set()
-        for _, _, class_label in ks.inquire(subject=ds.encode(doc_cid), property='CLASSIFICATION_FIRST_PAGE'):
-            okid, _ = ks.believe(ds.encode(doc_cid), 'CLASSIFICATION_FIRST_PAGE', class_label)
-            for _, _, processor_name in ks.inquire(subject=ds.encode(okid), property='MODEL_AND_PROMPT'):
-                completed_models.add(processor_name)
-                print(f"** already computed: {processor_name}->{class_label}")
-        if processor_name in completed_models:
-            print('already complete for',processor_name)
-            kds.forget(okid)
-            #continue
         
         # gather up all pages to be used for classification
         page_text = dict()
