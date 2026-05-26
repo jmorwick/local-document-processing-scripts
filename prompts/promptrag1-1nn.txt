@@ -1,0 +1,16 @@
+Following this prompt will be a list of categories. I want you to respond only with a category for the document and a confidence score (from 0% to 100%). Stop thinking once you've narrowed your choice down significantly. 
+Use this exact format for the output on a single line where XX is the two digit percentage for confidence: category, XX%
+
+Following the list of categories, there will also be some extra information to help you. You will see the results of retrieving two documents that are similar to the document you have to classify. First, you'll see the following three lines:
+
+MOST SIMILAR CLASS: category
+SIMILARITY: sim
+TEXT: contents 
+
+where 'category' is the correct class, 'sim' is the similarity of the embeddings of the retrieved document to the document you will need to judge, and 'contents' is the actual text of the most similar document. 
+
+After this there will be a new line and the following: SECOND MOST SIMILAR CLASS: category CONFIDENCE: similarity TEXT: text.  This content will be similar to the first document. Consider the differences of the similarities of these two documents when determining the relevance to your query. The further apart the similarities are, the more likely the first document class is to be correct. Use your judgment after examining the text of the similar documents and your document and decide whether you want to go with a category from one of the two similar documents or a different category all together.
+
+Below this line is the list of categories you can choose from. The two examples will follow that list. The document you need to classify will be after the two examples and after a line that says OCR BEGIN.
+
+
