@@ -67,7 +67,11 @@ for cid1 in document_cids:
     d1em = get_page_embeddings(cid1)
     others = []
     for cid2 in document_cids:
-        dist = np.dot(d1em, get_page_embeddings(cid2))
+        d2em = get_page_embeddings(cid2)
+        if d1em is None or d2em is None:
+            dist = 0
+        else: 
+            dist = np.dot(d1em, d2em)
         #print(ds.encode(cid2),'-->',dist, file=sys.stderr)
         print((',' if c else '')+str(dist),end='')
         c += 1
