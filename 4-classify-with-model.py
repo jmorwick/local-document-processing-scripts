@@ -11,14 +11,15 @@ import sys
 
 
 if len(sys.argv) < 4:
-   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name")
+   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name [first-page-only]")
 
 pdf_list_cid = sys.argv[1]
 prompt_template_cid = sys.argv[2]
 ocr_model_name = sys.argv[3]
 llm_model_name = sys.argv[4]
+first_page_only = len(sys.argv) >= 5 and sys.argv[5] == 'first-page-only'
 
-processor_name = llm_model_name+','+prompt_template_cid
+processor_name = llm_model_name + ('-fp' if first_page_only else '')+','+prompt_template_cid
 
 def get_property(cid, property):
     if type(cid) == bytes: cid = ds.encode(cid) 
@@ -41,13 +42,12 @@ for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
 
 
 # query class list
-
+class_list = set()
 for doc_cid in document_cids:
-    class_list = set()
     for _, _, class_label in ks.inquire(ds.encode(doc_cid), 'assigned-class'):
         class_list.add(class_label) 
-
-print('using template',prompt_template_cid,'with model',llm_model_name,'to classify documents with one of',class_list)
+        
+print('using template',prompt_template_cid,'with processor',processor_name,'to classify documents with one of',class_list)
 
 prompt_template = ds.recall(prompt_template_cid).decode()
 
@@ -57,15 +57,15 @@ llm_client = OpenAI(
 )
 
 def classify_with_llm(ocr_text):
+    prompt_text = f"{prompt_template}\n{'\n'.join(class_list)}\nOCR BEGIN\n\n{ocr_text}"
     return llm_client.chat.completions.create(
         model=llm_model_name,
         messages=[
-            {"role": "user", "content": f"{prompt_template}\n{'\n'.join(class_list)}\nOCR BEGIN\n\n{ocr_text}"}
+            {"role": "user", "content": prompt_text}
         ]
     ).choices[0].message.content
 
     
-
 
 
 predictions = 0
@@ -73,13 +73,14 @@ print('Total documents to process:',len(document_cids))
 for doc_cid in document_cids:
         print('\n\n processing pdf: ', ds.encode(doc_cid))
         print(f"Progress: {(predictions/len(document_cids)):.2%}\n\n")
+        predictions += 1
        
         completed_models = set()
         for _, _, class_label in ks.inquire(subject=ds.encode(doc_cid), property='CLASSIFICATION'):
             okid, _ = ks.believe(ds.encode(doc_cid), 'CLASSIFICATION', class_label)
-            for _, _, processor_name in ks.inquire(subject=ds.encode(okid), property='MODEL_AND_PROMPT'):
-                completed_models.add(processor_name)
-                print(f"** already computed: {processor_name}->{class_label}")
+            for _, _, new_processor_name in ks.inquire(subject=ds.encode(okid), property='MODEL_AND_PROMPT'):
+                completed_models.add(new_processor_name)
+                print(f"** already computed: {new_processor_name}->{class_label}")
         if processor_name in completed_models:
             print('already complete for',processor_name)
             #kds.forget(okid)
@@ -91,7 +92,8 @@ for doc_cid in document_cids:
             if prop != 'CONTAINS': continue
             kid, _ = ks.believe(ds.encode(doc_cid), prop, page_cid)
             _, _, pagenumber = list(ks.inquire(subject=ds.encode(kid), property='PAGE'))[0]
-            
+            if first_page_only and pagenumber != '1': 
+                continue
             for _, _, ocr_cid in ks.inquire(subject=page_cid, property='OCR'):
                 okid, _ = ks.believe(page_cid, 'OCR', ocr_cid)
                 for _, _, cmodel in ks.inquire(subject=ds.encode(okid), property='MODEL'):
@@ -103,7 +105,9 @@ for doc_cid in document_cids:
             full_text += page_text[page_num]
     
         try: 
-            class_label, confidence = classify_with_llm(full_text).strip().split('\n')[-1].split(',')
+            response = classify_with_llm(full_text)
+            print(response)
+            class_label, confidence = response.strip().split('\n')[-1].split(',')
             class_label = class_label.strip()
             confidence = confidence.strip()
             print(f"'{class_label}', '{confidence}'")
@@ -117,5 +121,4 @@ for doc_cid in document_cids:
         okid, _ = ks.believe(ds.encode(okid), 'MODEL_AND_PROMPT', processor_name)
         ks.believe(ds.encode(okid), 'CONFIDENCE', confidence)
         print('CLASSIFICATION: ',ds.encode(doc_cid), '-->',class_label, confidence)
-        predictions += 1
-kds.flush()   # move up to recover from interruptions more easily
+        kds.flush()   # move up to recover from interruptions more easily
