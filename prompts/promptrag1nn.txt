@@ -1,7 +1,7 @@
 Following this prompt will be a list of categories. I want you to respond with a simple category for the document and a confidence score (from 0% to 100%). Stop thinking once you've narrowed your choice down significantly. 
 Use this exact format for the output on a single line where XX is the two digit percentage for confidence: category, XX%
 
-Following the list of categories, there will also be some extra information to help you. You will see the results of retrieving two similar documents to the document you have to classify. First, you'll see the following three lines:
+Following the list of categories, there will also be some extra information to help you. You will see the results of retrieving one document similar to the document you have to classify. First, you'll see the following three lines:
 
 MOST SIMILAR CLASS: category
 SIMILARITY: similarity
@@ -9,8 +9,5 @@ TEXT: text
 
 where category is the correct category, similarity is the closeness of the embeddings of the retrieved document to the document you will need to judge, and text is the actual text of the most similar document. 
 
-After this there will be a new line and the following: SECOND MOST SIMILAR CLASS: category CONFIDENCE: similarity TEXT: text.  This content will be similar to the first document. Take in to consideration the closeness of these two documents when determining the relevance to your query. The closer the distances are, the poorer the information they will be providing for you. The further the distances are, the more likely the first document is to be correct. Use your judgment after examining the text of the similar document and your document and decide whether you want to go with a category from one of the two similar documents or a different category all together.
-
-Below this line is the list of categories. The document you need to classify will be after the two examples and after a line that says OCR BEGIN.
-
+Below this line is the list of categories. The document you need to classify will be after the example and after a line that says OCR BEGIN.
 
