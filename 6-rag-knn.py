@@ -11,7 +11,7 @@ import sys
 
 
 if len(sys.argv) < 3:
-   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name data-matrix-file (1nn/1-1nn)", file=sys.stderr)
+   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name data-matrix-file (1nn/2nn/1-1nn)", file=sys.stderr)
 
 pdf_list_cid = sys.argv[1]
 prompt_template_cid = sys.argv[2]
@@ -23,7 +23,7 @@ first_page_only = True
 processor_name = llm_model_name + '-' + strategy+','+prompt_template_cid
 matrix = np.loadtxt(data_file_name, delimiter=",")
 
-if strategy not in {'1nn', '1-1nn'}:
+if strategy not in {'1nn', '1-1nn', '2nn'}:
     print('ERROR: unknown strategy',strategy, file=sys.stderr)
     sys.exit(1)
 
@@ -101,9 +101,11 @@ for doc_cid in document_cids:
             continue
         other_class = get_property(other_cid, 'assigned-class')
         if strategy == '1-1nn' and other_class == most_similar_class: continue
+        # doing 2-nn...
         second_most_similar_cid = other_cid
         second_most_similar_similarity = other_similarity
         second_most_similar_class = other_class
+        break
     r += 1
     
     
@@ -170,13 +172,11 @@ for doc_cid in document_cids:
         second_most_similar_text += page_text[page_num]
         
         
-        
-        
     # form prompt and execute
     try: 
         prompt_text = f"{ds.recall_text(prompt_template_cid)}\n{'\n'.join(class_list)}\n"
         prompt_text += f"MOST SIMILAR CLASS: {most_similar_class}\nSIMILARITY: {most_similar_similarity}\nTEXT: {most_similar_text}\n"
-        if strategy in ('1-1nn', '2-nn'):
+        if strategy in ('1-1nn', '2nn'):
             prompt_text += f"SECOND MOST SIMILAR CLASS: {second_most_similar_class}\nSIMILARITY: {second_most_similar_similarity}\nTEXT: {second_most_similar_text}\n"
         prompt_text += f"\nOCR BEGIN\n\n{full_text}"
         print('--------------',prompt_text,'\n------------------')
@@ -196,6 +196,4 @@ for doc_cid in document_cids:
     ks.believe(ds.encode(okid), 'CONFIDENCE', confidence)
     print('CLASSIFICATION: ',ds.encode(doc_cid), '-->',class_label, confidence)
     kds.flush()   # move up to recover from interruptions more easily
-
-print('accuracy:',correct/len(predictions))
 
