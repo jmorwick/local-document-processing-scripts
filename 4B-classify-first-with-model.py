@@ -80,7 +80,16 @@ for doc_cid in document_cids:
                         
                         cfcid,_ = ks.believe(ocr_cid, 'CLASSIFICATION_FIRST_PAGE', 'None')
                         kds.forget(cfcid)
+                        
+                        skip = False
+                        for _,_,old_class in ks.inquire(ocr_cid, 'CLASSIFICATION_FIRST_PAGE'):
+                            old_kid,_ = ks.believe(ocr_cid, 'CLASSIFICATION_FIRST_PAGE', old_class)
+                            for _,_,old_processor in ks.inquire(ds.encode(old_kid), 'MODEL_AND_PROMPT'):
+                                if old_processor == processor_name:
+                                    print('already computed for ',processor_name,'as',old_class)
+                                    skip = True
                         print('page',pagenumber)
+                        if skip: continue
                         try: 
                             response = classify_with_llm(ds.recall_text(ocr_cid))
                             print(response)
