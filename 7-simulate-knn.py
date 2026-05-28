@@ -7,6 +7,7 @@ from cidnilib import InMemoryKnowledgeService as IMKS
 import PIL
 import json
 import sys
+from collections import defaultdict
 
 
 if len(sys.argv) < 3:
@@ -40,6 +41,15 @@ def get_property(cid, property):
     except: return None
         
 
+def max_weighted_vote(doc_similarities):
+    tallies = defaultdict(lambda : 0)
+    for cid, conf in doc_similarities:
+      cl = get_property(cid, 'assigned-class')
+      tallies[cl] += conf
+    print('votes',tallies, file=sys.stderr)
+    chosen_class = max(tallies, key=tallies.get)
+    return chosen_class, tallies[chosen_class]/k
+
 
 predictions = []
 print('Total documents to process:',len(document_cids), file=sys.stderr)
@@ -53,7 +63,8 @@ for doc_cid in document_cids:
         if doc_cid == document_cids[c]: continue
         others.append((document_cids[c],row[c]))
     others = sorted(others, key=lambda x: x[1], reverse=True)
-    predictions.append((ds.encode(doc_cid), get_property(doc_cid, 'assigned-class'), get_property(others[0][0], 'assigned-class'), others[0][1]))
+    predicted_class, predicted_confidence = max_weighted_vote(others[0:k])
+    predictions.append((ds.encode(doc_cid), get_property(doc_cid, 'assigned-class'), predicted_class, predicted_confidence))
     print(','.join(map(str,predictions[-1])))
     r += 1
 correct = 0
