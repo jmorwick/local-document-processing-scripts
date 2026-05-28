@@ -67,6 +67,9 @@ for cid1 in document_cids:
     print(f"Progress: {(r/len(document_cids)):.2%}\n\n", file=sys.stderr)
 
     pages = get_pages(cid1)
+    if '1' not in pages: 
+        print(f"ERROR: no first page (all pages: {pages}", file=sys.stderr)
+        continue
     first_pages.add(pages['1'])
     all_pages.extend([pages[pnum] for pnum in sorted(pages)])
     r += 1
@@ -87,7 +90,7 @@ for cid in all_pages:
         others.append((all_pages[c],row[c]))
     others = sorted(others, key=lambda x: x[1], reverse=True)
     predictions.append((cid, cid in first_pages, others[0][0] in first_pages, others[0][1]))
-    print(predictions[-1])
+    print(predictions[-1][0]+','+str(predictions[-1][1])+','+str(predictions[-1][2])+','+str(float(predictions[-1][3])))
     r += 1
 correct = 0
 for prediction in predictions:
