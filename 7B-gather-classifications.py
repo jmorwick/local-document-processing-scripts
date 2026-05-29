@@ -11,7 +11,7 @@ import sys
 
 
 if len(sys.argv) < 4:
-   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name [first-page-only]")
+   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name [first-page-only]", file=sys.stderr))
 
 pdf_list_cid = sys.argv[1]
 prompt_template_cid = sys.argv[2]
@@ -49,7 +49,7 @@ r = 0
 for doc_cid in document_cids:
     print('\n\n processing pdf: ', ds.encode(doc_cid), file=sys.stderr)
     print(f"Progress: {(len(predictions)/len(document_cids)):.2%}\n\n", file=sys.stderr)
-       
+     
     class_label = 'None'
     confidence = '0'        
     for _, _, new_class_label in ks.inquire(subject=ds.encode(doc_cid), property='CLASSIFICATION'):
@@ -74,5 +74,5 @@ correct = 0
 for prediction in predictions:
     if prediction[1] == prediction[2]: correct+=1
 
-print('accuracy:',correct/len(predictions))
+print('accuracy:',correct/len(predictions), file=sys.stderr))
 
