@@ -65,18 +65,26 @@ llm_client = OpenAI(
 )
 
 def classify_with_llm(prompt):
-    return llm_client.chat.completions.create(
+    print('------------------------', file=sys.stderr)
+    print('prompt:', file=sys.stderr)
+    print('------------------------', file=sys.stderr)
+    print(prompt)
+    print('------------------------', file=sys.stderr)
+    print('result:', file=sys.stderr)
+    print('------------------------', file=sys.stderr)
+    result = llm_client.chat.completions.create(
         model=llm_model_name,
         messages=[
             {"role": "user", "content": prompt_text}
         ]
     ).choices[0].message.content
+    return result
 
 print('Total documents to process:',len(document_cids), file=sys.stderr)
 r = 0
 for doc_cid in document_cids:
-    print('\n\n processing pdf: ', ds.encode(doc_cid))
-    print(f"Progress: {(r/len(document_cids)):.2%}\n\n")
+    print('\n\n processing pdf: ', ds.encode(doc_cid), file=sys.stderr)
+    print(f"Progress: {(r/len(document_cids)):.2%}\n\n", file=sys.stderr)
             
     
     # find rag content
@@ -109,16 +117,15 @@ for doc_cid in document_cids:
     r += 1
     
     
-    
     # check if already done
     completed_models = set()
     for _, _, class_label in ks.inquire(subject=ds.encode(doc_cid), property='CLASSIFICATION'):
         okid, _ = ks.believe(ds.encode(doc_cid), 'CLASSIFICATION', class_label)
         for _, _, new_processor_name in ks.inquire(subject=ds.encode(okid), property='MODEL_AND_PROMPT'):
             completed_models.add(new_processor_name)
-            print(f"** already computed: {new_processor_name}->{class_label}")
+            print(f"** already computed: {new_processor_name}->{class_label}", file=sys.stderr)
     if processor_name in completed_models:
-        print('already complete for',processor_name)
+        print('already complete for',processor_name, file=sys.stderr)
         #kds.forget(okid)
         continue
     
@@ -179,21 +186,19 @@ for doc_cid in document_cids:
         if strategy in ('1-1nn', '2nn'):
             prompt_text += f"SECOND MOST SIMILAR CLASS: {second_most_similar_class}\nSIMILARITY: {second_most_similar_similarity}\nTEXT: {second_most_similar_text}\n"
         prompt_text += f"\nOCR BEGIN\n\n{full_text}"
-        print('--------------',prompt_text,'\n------------------')
         response = classify_with_llm(prompt_text)
-        print(response,'\n-------------')
         class_label, confidence = response.strip().split('\n')[-1].split(',')
         class_label = class_label.strip()
         confidence = confidence.strip()
-        print(f"'{class_label}', '{confidence}'")
+        print(f"'{class_label}', '{confidence}'", file=sys.stderr)
     except Exception as e:
-        print('ERROR: LLM did not return a prediction',e)
+        print('ERROR: LLM did not return a prediction',e, file=sys.stderr)
         class_label = 'None'
         confidence = '0%'
 
     okid, _ = ks.believe(ds.encode(doc_cid), 'CLASSIFICATION', class_label)
     okid, _ = ks.believe(ds.encode(okid), 'MODEL_AND_PROMPT', processor_name)
     ks.believe(ds.encode(okid), 'CONFIDENCE', confidence)
-    print('CLASSIFICATION: ',ds.encode(doc_cid), '-->',class_label, confidence)
+    print('CLASSIFICATION: ',ds.encode(doc_cid), '-->',class_label, confidence, file=sys.stderr)
     kds.flush()   # move up to recover from interruptions more easily
 
