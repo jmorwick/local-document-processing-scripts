@@ -48,9 +48,8 @@ def get_page_embeddings(cid):
         if pages_to_use=='first' and get_property(kid, 'PAGE')!='1': continue 
         for _, _, emcid in ks.inquire(subject=page_cid, property='EMBEDDING'):
             emkid, _ = ks.believe(page_cid, 'EMBEDDING', emcid)
-            if get_property(emkid, 'MODEL') == embedding_model_name: 
+            if get_property(emkid, 'MODEL').lower() == embedding_model_name.lower():
                 embeddings.append(np.array(json.loads(ds.recall(emcid))[0]))
-
     if not embeddings:
         print('ERROR: no embeddings for',ds.encode(cid), file=sys.stderr)
         return None
