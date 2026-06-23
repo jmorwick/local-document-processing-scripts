@@ -1,5 +1,7 @@
 import sys
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 
@@ -34,6 +36,84 @@ def read_results(csv_file):
 
     return df
 
+def plot_coverage_vs_accuracy(dfs, labels=None, output_file=None):
+    def coverage_accuracy_points(df):
+        df = df.copy()
+        df = df.dropna(subset=["confidence"])
+        df = df.sort_values("confidence", ascending=False)
+
+        coverages = []
+        accuracies = []
+
+        for k in range(1, len(df) + 1):
+            subset = df.iloc[:k]
+
+            coverages.append(k / len(df))
+            accuracies.append(subset["is_correct"].mean())
+
+        return coverages, accuracies
+
+    if labels is None:
+        labels = [f"df{i+1}" for i in range(len(dfs))]
+
+    plt.figure()
+
+    for df, label in zip(dfs, labels):
+        coverages, accuracies = coverage_accuracy_points(df)
+        plt.plot(coverages, accuracies, label=label)
+
+    plt.xlabel("Coverage")
+    plt.ylabel("Accuracy")
+    plt.title("Coverage vs. Accuracy")
+    plt.xlim(0, 1.0)
+    plt.ylim(0, 1.05)
+    plt.grid(True)
+    plt.legend()
+
+    if output_file:
+        plt.savefig(output_file, bbox_inches="tight")
+    else:
+        plt.show()
+
+
+
+def plot_accuracy_vs_min_confidence(dfs, labels=None, output_file=None):
+    if labels is None:
+        labels = [f"df{i+1}" for i in range(len(dfs))]
+
+    plt.figure()
+
+    for df, label in zip(dfs, labels):
+        df = df.copy()
+        df = df.dropna(subset=["confidence"])
+
+        thresholds = np.linspace(0, 1, 101)
+        accuracies = []
+
+        for threshold in thresholds:
+            subset = df[df["confidence"] >= threshold]
+
+            if len(subset) == 0:
+                continue
+
+            accuracies.append(subset["is_correct"].mean())
+
+        plt.plot(thresholds, accuracies, label=label)
+
+    plt.xlabel("Minimum Confidence")
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy vs. Minimum Confidence")
+    plt.xlim(0, 1.0)
+    plt.ylim(0.4, 1.00)
+    plt.grid(True)
+    plt.legend()
+
+    if output_file:
+        plt.savefig(output_file, bbox_inches="tight")
+    else:
+        plt.show()
+
+
 def get_accuracy(df):
     return accuracy_score(df["correct_class"], df["predicted_class"])
     
@@ -53,7 +133,12 @@ def main():
     print(f'Number of "None" responses: {get_none_count(df)}')
     print(f'Accuracy without "None" responses: {get_accuracy(non_none):.6f}')
 
-
+    datasets = [df]
+    for filename in sys.argv[2:]:
+      datasets.append(read_results(filename))
+    plot_coverage_vs_accuracy(datasets, sys.argv[1:], output_file='cov-acc.png')
+    plot_accuracy_vs_min_confidence(datasets, sys.argv[1:], output_file='conf-acc.png')
+    
 if __name__ == "__main__":
     main()
 
