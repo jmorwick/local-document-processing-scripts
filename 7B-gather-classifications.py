@@ -11,7 +11,7 @@ import sys
 
 
 if len(sys.argv) < 4:
-   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name [first-page-only]", file=sys.stderr))
+   print("usage: python script pdf_list_cid prompt_template_cid ocr_model_name llm_model_name [first-page-only]", file=sys.stderr)
 
 pdf_list_cid = sys.argv[1]
 prompt_template_cid = sys.argv[2]
@@ -74,5 +74,5 @@ correct = 0
 for prediction in predictions:
     if prediction[1] == prediction[2]: correct+=1
 
-print('accuracy:',correct/len(predictions), file=sys.stderr))
+print('accuracy:',correct/len(predictions), file=sys.stderr)
 
