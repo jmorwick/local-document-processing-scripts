@@ -42,11 +42,17 @@ def get_property(cid, property):
     try: return next(ks.inquire(cid, property))[2]
     except: return None
   
+def get_parent(cid):
+    if type(cid) is bytes: cid = ds.encode(cid)
+    for parent_cid, _, _ in ks.inquire(None, 'CONTAINS', cid):
+        return parent_cid
+
 def get_pages(cid):
+    if type(cid) is bytes: cid = ds.encode(cid)
     embeddings = []
     page_cids = dict()
-    for _, _, page_cid in ks.inquire(ds.encode(cid), 'CONTAINS'):
-        kid, _ = ks.believe(ds.encode(cid), 'CONTAINS', page_cid)
+    for _, _, page_cid in ks.inquire(cid, 'CONTAINS'):
+        kid, _ = ks.believe(cid, 'CONTAINS', page_cid)
         page_cids[get_property(kid, 'PAGE')] = page_cid
     return page_cids
 
@@ -81,16 +87,19 @@ predictions = []
 print('Total pages to process:',len(document_cids), file=sys.stderr)
 r = 0
 for cid in all_pages:
-    print('\n\n processing page: ', cid, file=sys.stderr)
+    print('\n\n processing page: ', cid, 'from doc: ', get_parent(cid),file=sys.stderr)
     print(f"Progress: {(len(predictions)/len(all_pages)):.2%}\n\n", file=sys.stderr)
     row = matrix[r]
     others = []
+    toskip = get_pages(get_parent(cid)).values()
     for c in range(len(row)):
-        if cid == all_pages[c]: continue
-        others.append((all_pages[c],row[c]))
+        if all_pages[c] not in toskip: 
+            others.append((all_pages[c],row[c]))
     others = sorted(others, key=lambda x: x[1], reverse=True)
     predictions.append((cid, cid in first_pages, others[0][0] in first_pages, others[0][1]))
+    print('top-page:',others[0][0], 'doc:',get_parent(others[0][0]), file=sys.stderr)
     print(predictions[-1][0]+','+str(predictions[-1][1])+','+str(predictions[-1][2])+','+str(float(predictions[-1][3])))
+    print(predictions[-1][0]+','+str(predictions[-1][1])+','+str(predictions[-1][2])+','+str(float(predictions[-1][3])),file=sys.stderr)
     r += 1
 correct = 0
 for prediction in predictions:

@@ -34,7 +34,6 @@ for line in ds.recall(ds.decode(pdf_list_cid)).decode().split('\n'):
         if not line: continue
         cid = ds.decode(line)   
         document_cids.append(cid)
-        
           
 def get_property(cid, property):
     if type(cid) == bytes: cid = ds.encode(cid) 
@@ -49,13 +48,6 @@ def get_pages(cid):
         page_cids[get_property(kid, 'PAGE')] = page_cid
     return page_cids
 
-
-def get_page_embeddings(cid):
-    for _, _, emcid in ks.inquire(subject=cid, property='EMBEDDING'):
-        emkid, _ = ks.believe(cid, 'EMBEDDING', emcid)
-        if get_property(emkid, 'MODEL') == embedding_model_name: 
-            return np.array(json.loads(ds.recall(emcid))[0])
-    
          
 print('Total documents to process:',len(document_cids), file=sys.stderr)
 r = 0
@@ -70,6 +62,7 @@ for cid1 in document_cids:
         print(f"ERROR: no first page (all pages: {pages}", file=sys.stderr)
         continue
     all_pages.extend([pages[pnum] for pnum in sorted(pages)])
+    first_pages.add(pages['1'])
     r += 1
     
 r = 0   
@@ -78,14 +71,17 @@ r = 0
 predictions = []
 print('Total pages to process:',len(document_cids), file=sys.stderr)
 r = 0
-for cid in all_pages:
-    print('\n\n processing page: ', cid, file=sys.stderr)
+for page_cid in all_pages:
+    print('\n\n processing page: ', page_cid, file=sys.stderr)
     print(f"Progress: {(len(predictions)/len(all_pages)):.2%}\n\n", file=sys.stderr)
     class_label = 'None'
     confidence = '0'        
-    for _, _, new_class_label in ks.inquire(cid, property='CLASSIFICATION'):
-        okid, _ = ks.believe(cid, 'CLASSIFICATION', new_class_label)
+    ocr_cid = get_property(page_cid, 'OCR')
+    for _, _, new_class_label in ks.inquire(ocr_cid, property='CLASSIFICATION_FIRST_PAGE'):
+        okid, _ = ks.believe(ocr_cid, 'CLASSIFICATION_FIRST_PAGE', new_class_label)
         for _, _, other_processor_name in ks.inquire(subject=ds.encode(okid), property='MODEL_AND_PROMPT'):
+            print(f"m/p: {other_processor_name}", file=sys.stderr)
+            
             if processor_name == other_processor_name:
                 class_label = new_class_label
                 try: 
@@ -98,7 +94,7 @@ for cid in all_pages:
                     okid2, _ = ks.believe(ds.encode(okid), 'MODEL_AND_PROMPT',processor_name)
                     print(f"ERROR: corrupt prediction: '{class_label}', '{get_property(okid2, 'CONFIDENCE')}'", file=sys.stderr)
 
-    predictions.append((cid, cid in first_pages, class_label=='FIRST', confidence))
+    predictions.append((page_cid, page_cid in first_pages, class_label=='FIRST', confidence))
     print(predictions[-1][0]+','+str(predictions[-1][1])+','+str(predictions[-1][2])+','+str(float(predictions[-1][3])))
     r += 1
 correct = 0
